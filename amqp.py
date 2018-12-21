@@ -1,40 +1,56 @@
-
-from exceptions import ChannelClosedError
-
+import dill
 import json
 import pickle
+import pika.exceptions
 
 from pika import BlockingConnection
-from dill import dill
 
 
-class AMQPStore(object):
+class BaseProducer(object):
+    def __init__(self, serialization='dill', ack=True):
+        self.ack = ack
+        self.serialization_fmt = serialization
+
+    def _serialize(self, body):
+        if self.serialization_fmt == 'dill':
+            return dill.dumps(body)
+        elif self.serialization_fmt == 'pickle':
+            return pickle.dumps(body)
+        elif self.serialization_fmt == 'json':
+            return json.dumps(body)
+
+
+class BaseConsumer(object):
+    def __init__(self, serialization='dill', ack=True):
+        self.ack = ack
+        self.serialization_fmt = serialization
+
+    def _deserialize(self, body):
+        if self.serialization_fmt == 'dill':
+            return dill.loads(body)
+        elif self.serialization_fmt == 'pickle':
+            return pickle.loads(body)
+        elif self.serialization_fmt == 'json':
+            return json.loads(body)
+
+
+class BlockingProducer(BaseProducer):
 
     def __init__(self, exchange=None, routing_key=None, serialization='dill', ack=True):
         self.ack = ack
         self.connection = BlockingConnection()
         self.channel = self.connection.channel()
-        self.exchange = exchange
+        self.exchange = exchange or 'amqp-store'
+        self.channel.exchange_declare(exchange=self.exchange, exchange_type='direct')
         self.routing_key = routing_key
-        self.message = None
         self.serialization_fmt = serialization
-        self.body = dict(message=None, serialization_fmt=self.serialization_fmt)
-
-    def _serialize(self):
-        if self.serialization_fmt == 'dill':
-            return dill.dumps(self.message)
-        elif self.serialization_fmt == 'pickle':
-            return pickle.dumps(self.message)
-        elif self.serialization_fmt == 'json':
-            return json.dumps(self.message)
+        self.body = None
 
     def send_message(self, message):
-        self.message = message
-        self.body['message'] = self._serialize()
-
+        self.body = self._serialize(message)
         if not self.channel.is_open:
-            raise ChannelClosedError('Cannot send message {0} on a closed channel'.format(self.message))
-
+            raise pika.exceptions.ChannelClosed('Cannot send on a closed channel')
+        print (self.body, type(self.body))
         self.channel.basic_publish(
             exchange=self.exchange,
             routing_key=self.routing_key,
@@ -42,15 +58,31 @@ class AMQPStore(object):
         )
 
 
-class AMQPClient(object):
+class BlockingConsumer(BaseConsumer):
 
-    def __init__(self, queue_id, **connection_params):
-        self.connection = BlockingConnection(**connection_params)
+    def __init__(self, queue_id, ack=True, exchange=None, serialization='dill', connection_params={}):
+        self.ack = ack
+        self.exchange = exchange or 'amqp-store'
+        self.connection_params = connection_params
+        self.serialization_fmt = serialization
+        self.connection = BlockingConnection(**self.connection_params)
         self.channel = self.connection.channel()
+        self.channel.exchange_declare(exchange=self.exchange, exchange_type='direct')
         self.queue_id = queue_id
-        self.channel.basic_consume(self.queue_id)
+        self.channel.queue_declare(self.queue_id, auto_delete=False)
+        self.channel.queue_bind(exchange=self.exchange, queue=self.queue_id)
 
     def get(self):
-        self.start_consuming()
-        if self.ack and self.channel.is_open:
-            self.channel.basic_ack(delivery_tag)
+        for method_frame, props, body in self.channel.consume(self.queue_id):
+            body = self._deserialize(body)
+            if self.ack:
+                self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+            return body
+
+
+class AsyncoreProducer(BaseProducer):
+    pass
+
+
+class AsyncoreConsumer(BaseConsumer):
+    pass
