@@ -1,9 +1,17 @@
+"""
+Defines Blocking & Async  style Producers and Consumers.
+"""
 import dill
 import json
 import pickle
 import pika.exceptions
+import uuid
 
 from pika import BlockingConnection
+
+
+def uid():
+    return str(uuid.uuid4())
 
 
 class BaseProducer(object):
@@ -49,7 +57,6 @@ class BlockingProducer(BaseProducer):
         self.body = self._serialize(message)
         if not self.channel.is_open:
             raise pika.exceptions.ChannelClosed('Cannot send on a closed channel')
-        print (self.body, type(self.body))
         self.channel.basic_publish(
             exchange=self.exchange,
             routing_key=self.routing_key,
@@ -76,11 +83,13 @@ class BlockingConsumer(BaseConsumer):
 
     def get(self):
         for method_frame, props, body in self.channel.consume(self.queue_id):
-            body = self._deserialize(body)
-            if self.ack:
-                self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
-            self._cleanup()
-            return body
+            try:
+                body = self._deserialize(body)
+                if self.ack:
+                    self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+            finally:
+                self._cleanup()
+                return body
 
 
 class AsyncoreProducer(BaseProducer):
@@ -89,13 +98,3 @@ class AsyncoreProducer(BaseProducer):
 
 class AsyncoreConsumer(BaseConsumer):
     pass
-
-
-if __name__ == '__main__':
-    import uuid
-    qid = routing_key =  str(uuid.uuid4())
-    producer = BlockingProducer(routing_key=routing_key)
-    consumer = BlockingConsumer(queue_id=qid)
-    producer.send_message('hello world!')
-    print qid
-    print consumer.get()
