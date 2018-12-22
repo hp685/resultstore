@@ -7,7 +7,7 @@ import pickle
 import pika.exceptions
 import uuid
 
-from pika import BlockingConnection
+from pika import BlockingConnection, SelectConnection, TornadoConnection
 
 
 def uid():
@@ -57,11 +57,17 @@ class BlockingProducer(BaseProducer):
         self.body = self._serialize(message)
         if not self.channel.is_open:
             raise pika.exceptions.ChannelClosed('Cannot send on a closed channel')
-        self.channel.basic_publish(
+        self.channel.publish(
             exchange=self.exchange,
             routing_key=self.routing_key,
             body=self.body
         )
+
+    def __del__(self):
+        if self.channel.is_open:
+            self.channel.close()
+        if self.connection.is_open:
+            self.connection.close()
 
 
 class BlockingConsumer(BaseConsumer):
@@ -98,14 +104,26 @@ class BlockingConsumer(BaseConsumer):
             self.connection.close()
 
     def get(self):
-        for method_frame, props, body in self.channel.consume(self.queue_id):
-            try:
+        body = None
+        try:
+            for method_frame, props, body in self.channel.consume(self.queue_id):
+
                 body = self._deserialize(body)
                 if self.ack:
                     self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
-            finally:
-                self._cleanup()
-                return body
+
+        finally:
+            self._cleanup()
+            return body
+
+    def __del__(self):
+        if self.channel.is_open:
+            self.channel.queue_unbind(exchange=self.exchange, queue=self.queue_id)
+            self.channel.queue_delete(queue=self.queue_id)
+            self.channel.close()
+
+        if self.connection.is_open:
+            self.connection.close()
 
 
 class AsyncoreProducer(BaseProducer):

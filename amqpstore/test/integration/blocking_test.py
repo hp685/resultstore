@@ -14,20 +14,21 @@ def test_send_get():
 
 
 def test_multiple_send_get():
-    pool = ThreadPool(100)
-    ids = [uid() for _ in range(100)]
+    num_requests = 30
     result = []
-    producers = [BlockingProducer(routing_key=ids[i], ack=False) for i in range(100)]
-    consumers = [BlockingConsumer(queue_id=ids[i], ack=False) for i in range(100)]
-    for idx, c in enumerate(consumers):
-        def get(consumer):
-            return consumer.get()
-        result.append(pool.apply_async(get, (c,)))
+    message = 'hello'
+    consumers = [BlockingConsumer(queue_id=str(i)) for i in range(num_requests)]
+    producers = [BlockingProducer(routing_key=str(i)) for i in range(num_requests)]
+    pool = ThreadPool(num_requests)
 
-    for idx, p in enumerate(producers):
-        def send_message(p, idx):
-            p.send_message(str(idx))
-        pool.apply_async(send_message, (p, idx))
+    def get(c):
+        assert c.get() == message
 
-    for idx, r in enumerate(result):
-        assert r.get() == str(idx)
+    def send(p):
+        p.send_message(message)
+    for c in consumers:
+        pool.apply_async(get, (c,))
+        assert c.get() == message
+
+    for p in producers:
+        pool.apply_async(send, (p,))
