@@ -71,15 +71,31 @@ class BlockingConsumer(BaseConsumer):
         self.connection_params = connection_params
         self.connection = BlockingConnection(**self.connection_params)
         self.channel = self.connection.channel()
-        self.channel.exchange_declare(exchange=self.exchange, exchange_type='direct')
+        self.channel.exchange_declare(
+            exchange=self.exchange,
+            exchange_type='direct'
+        )
         self.queue_id = queue_id
-        self.channel.queue_declare(self.queue_id, auto_delete=False)
-        self.channel.queue_bind(exchange=self.exchange, queue=self.queue_id)
+        self.channel.queue_declare(
+            self.queue_id,
+            auto_delete=False
+        )
+        self.channel.queue_bind(
+            exchange=self.exchange,
+            queue=self.queue_id
+        )
         super(BlockingConsumer, self).__init__(serialization=serialization, ack=ack)
 
     def _cleanup(self):
         if self.channel.is_open:
-            self.channel.queue_unbind(self.queue_id, exchange=self.exchange, routing_key=self.queue_id)
+            self.channel.queue_unbind(self.queue_id,
+                                      exchange=self.exchange,
+                                      routing_key=self.queue_id
+                                      )
+        self.channel.queue_delete(queue=self.queue_id)
+
+        if self.connection.is_open:
+            self.connection.close()
 
     def get(self):
         for method_frame, props, body in self.channel.consume(self.queue_id):
