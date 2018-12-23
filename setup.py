@@ -1,8 +1,8 @@
 from distutils.core import setup
 
 setup(
-    name='amqpstore',
+    name='resultstore',
     version='0.1',
-    packages=['amqpstore'],
+    packages=['resultstore'],
     long_description=open('README.md').read()
 )

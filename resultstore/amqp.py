@@ -1,63 +1,35 @@
 """
 Defines Blocking & Async  style Producers and Consumers.
 """
-import dill
-import json
-import pickle
 import pika.exceptions
 import uuid
 
-from pika import BlockingConnection, SelectConnection, TornadoConnection
+from pika import BlockingConnection
+
+from base import BaseConsumer, BaseProducer
 
 
 def uid():
     return str(uuid.uuid4())
 
 
-class BaseProducer(object):
-    def __init__(self, serialization='dill', ack=True):
-        self.ack = ack
-        self.serialization_fmt = serialization
-
-    def _serialize(self, body):
-        if self.serialization_fmt == 'dill':
-            return dill.dumps(body)
-        elif self.serialization_fmt == 'pickle':
-            return pickle.dumps(body)
-        elif self.serialization_fmt == 'json':
-            return json.dumps(body)
-
-
-class BaseConsumer(object):
-    def __init__(self, serialization='dill', ack=True):
-        self.ack = ack
-        self.serialization_fmt = serialization
-
-    def _deserialize(self, body):
-        if self.serialization_fmt == 'dill':
-            return dill.loads(body)
-        elif self.serialization_fmt == 'pickle':
-            return pickle.loads(body)
-        elif self.serialization_fmt == 'json':
-            return json.loads(body)
-
-
 class BlockingProducer(BaseProducer):
 
-    def __init__(self, exchange=None, routing_key=None, serialization='dill', ack=True):
+    def __init__(self, task_id, ack=True, exchange=None, serialization='dill'):
+        self.ack = ack
         self.connection = BlockingConnection()
         self.channel = self.connection.channel()
         self.exchange = exchange or 'amqp-store'
         self.channel.exchange_declare(exchange=self.exchange, exchange_type='direct')
-        self.routing_key = routing_key
+        self.routing_key = task_id
         self.body = None
-        super(BlockingProducer, self).__init__(serialization=serialization, ack=ack)
+        super(BlockingProducer, self).__init__(serialization=serialization)
 
     def send_message(self, message):
         self.body = self._serialize(message)
         if not self.channel.is_open:
             raise pika.exceptions.ChannelClosed('Cannot send on a closed channel')
-        self.channel.publish(
+        self.channel.basic_publish(
             exchange=self.exchange,
             routing_key=self.routing_key,
             body=self.body
@@ -72,7 +44,8 @@ class BlockingProducer(BaseProducer):
 
 class BlockingConsumer(BaseConsumer):
 
-    def __init__(self, queue_id, ack=True, exchange=None, serialization='dill', connection_params={}):
+    def __init__(self, task_id, ack=True, exchange=None, serialization='dill', connection_params={}):
+        self.ack = ack
         self.exchange = exchange or 'amqp-store'
         self.connection_params = connection_params
         self.connection = BlockingConnection(**self.connection_params)
@@ -81,7 +54,7 @@ class BlockingConsumer(BaseConsumer):
             exchange=self.exchange,
             exchange_type='direct'
         )
-        self.queue_id = queue_id
+        self.queue_id = task_id
         self.channel.queue_declare(
             self.queue_id,
             auto_delete=False
@@ -90,7 +63,7 @@ class BlockingConsumer(BaseConsumer):
             exchange=self.exchange,
             queue=self.queue_id
         )
-        super(BlockingConsumer, self).__init__(serialization=serialization, ack=ack)
+        super(BlockingConsumer, self).__init__(serialization=serialization)
 
     def _cleanup(self):
         if self.channel.is_open:
@@ -111,6 +84,7 @@ class BlockingConsumer(BaseConsumer):
                 body = self._deserialize(body)
                 if self.ack:
                     self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)
+                break
 
         finally:
             self._cleanup()
@@ -124,11 +98,3 @@ class BlockingConsumer(BaseConsumer):
 
         if self.connection.is_open:
             self.connection.close()
-
-
-class AsyncoreProducer(BaseProducer):
-    pass
-
-
-class AsyncoreConsumer(BaseConsumer):
-    pass
