@@ -42,7 +42,7 @@ class RedisConsumer(BaseConsumer):
         self.task_id = _task_id(task_id)
         super(RedisConsumer, self).__init__(serialization=serialization)
 
-    def get(self, polling_interval=0.1):
+    def get(self, polling_interval=0.01):
         while True:
             result = self.client.get(self.task_id)
             if result:

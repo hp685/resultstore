@@ -1,25 +1,31 @@
 """Tests blocking producer-client."""
 
-from resultstore.amqp import BlockingProducer, BlockingConsumer, uid
+from resultstore.amqp import BlockingProducer, BlockingConsumer, uid, PublisherPool
 from resultstore.redispy import RedisConsumer, RedisProducer
 
+import pytest
 import threading
 
 
-def test_send_get():
+@pytest.fixture
+def publisher_pool():
+    return PublisherPool(max_connections=50)
+
+
+def test_send_get(publisher_pool):
     id = uid()
-    p = BlockingProducer(task_id=id)
+    p = BlockingProducer(task_id=id, pool=publisher_pool)
     c = BlockingConsumer(task_id=id)
     message = 'Hello world!'
     p.send_message(message)
     assert message == c.get()
 
 
-def test_multiple_send_get():
+def test_multiple_send_get(publisher_pool):
     num_requests = 50
     message = 'hello'
     consumers = [BlockingConsumer(task_id=str(i), ack=False) for i in range(num_requests)]
-    producers = [BlockingProducer(task_id=str(i), ack=False) for i in range(num_requests)]
+    producers = [BlockingProducer(task_id=str(i), ack=False, pool=publisher_pool) for i in range(num_requests)]
     threads = []
 
     def get(c):
