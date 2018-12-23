@@ -23,7 +23,7 @@ class RedisProducer(BaseProducer):
         self.task_id = _task_id(task_id)
         self.expiry = expiry
         self.body = None
-        super(BaseProducer, self).__init__(serialization=serialization)
+        super(RedisProducer, self).__init__(serialization=serialization)
 
     def send_message(self, body):
         self.body = self._serialize(body)
@@ -40,14 +40,14 @@ class RedisConsumer(BaseConsumer):
         self.port = port
         self.client = StrictRedis(host=self.host, port=self.port)
         self.task_id = _task_id(task_id)
-        super(BaseConsumer, self).__init__(serialization=serialization)
+        super(RedisConsumer, self).__init__(serialization=serialization)
 
     def get(self, polling_interval=0.1):
         while True:
             result = self.client.get(self.task_id)
             if result:
                 if self.client.ttl(self.task_id):
-                    return result
+                    return self._deserialize(result)
                 self.client.delete(self.task_id)
-                return result
+                return self._deserialize(result)
             sleep(polling_interval)

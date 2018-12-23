@@ -18,8 +18,8 @@ def test_send_get():
 def test_multiple_send_get():
     num_requests = 50
     message = 'hello'
-    consumers = [BlockingConsumer(task_id=str(i)) for i in range(num_requests)]
-    producers = [BlockingProducer(task_id=str(i)) for i in range(num_requests)]
+    consumers = [BlockingConsumer(task_id=str(i), ack=False) for i in range(num_requests)]
+    producers = [BlockingProducer(task_id=str(i), ack=False) for i in range(num_requests)]
     threads = []
 
     def get(c):
@@ -74,3 +74,4 @@ def test_multiple_send_get_redis():
 
     for t in threads:
         t.join()
+
