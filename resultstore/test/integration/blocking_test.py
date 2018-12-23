@@ -9,7 +9,7 @@ import threading
 
 @pytest.fixture
 def publisher_pool():
-    return PublisherPool(max_connections=50)
+    return PublisherPool(max_connections=30)
 
 
 def test_send_get(publisher_pool):
@@ -22,7 +22,7 @@ def test_send_get(publisher_pool):
 
 
 def test_multiple_send_get(publisher_pool):
-    num_requests = 50
+    num_requests = 30
     message = 'hello'
     consumers = [BlockingConsumer(task_id=str(i), ack=False) for i in range(num_requests)]
     producers = [BlockingProducer(task_id=str(i), ack=False, pool=publisher_pool) for i in range(num_requests)]
@@ -57,7 +57,7 @@ def test_send_get_redis():
 
 
 def test_multiple_send_get_redis():
-    num_requests = 50
+    num_requests = 30
     message = 'hello'
     consumers = [RedisConsumer(task_id=str(i)) for i in range(num_requests)]
     producers = [RedisProducer(task_id=str(i)) for i in range(num_requests)]

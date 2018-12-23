@@ -27,11 +27,15 @@ class PublisherPool(object):
 
     @contextmanager
     def acquire(self):
+        connection = None
         while True:
-            connection = self.publishers.popleft()
-            if connection not in self.used:
-                break
-            self.publishers.appendleft(connection)
+            if self.publishers:
+                connection = self.publishers.popleft()
+            if connection:
+                if connection not in self.used:
+                    break
+                else:
+                    self.publishers.appendleft(connection)
             sleep(.01)
 
         try:
@@ -46,10 +50,8 @@ class PublisherPool(object):
 
     def __del__(self):
         for publisher in self.publishers:
-            if publisher.channel.is_open:
-                publisher.channel.close()
-            if publisher.connection.is_open:
-                publisher.connection.close()
+            if publisher.channel().is_open:
+                publisher.channel().close()
 
 
 class BlockingProducer(BaseProducer):
