@@ -18,6 +18,10 @@ def uid():
 
 class PublisherPool(object):
     def __init__(self, max_connections=10, connection_params={}):
+        """
+        :param max_connections:
+        :param connection_params:
+        """
         self.num_connections = max_connections
         self.connection_params = connection_params
         self.publishers = deque()
@@ -27,6 +31,9 @@ class PublisherPool(object):
 
     @contextmanager
     def acquire(self):
+        """
+        :return:
+        """
         connection = None
         while True:
             if self.publishers:
@@ -45,6 +52,10 @@ class PublisherPool(object):
             self.release(connection)
 
     def release(self, connection):
+        """
+        :param connection:
+        :return:
+        """
         self.used.remove(connection)
         self.publishers.append(connection)
 
@@ -57,6 +68,13 @@ class PublisherPool(object):
 class BlockingProducer(BaseProducer):
 
     def __init__(self, task_id, ack=True, exchange=None, serialization='dill', pool=None):
+        """
+        :param task_id:
+        :param ack:
+        :param exchange:
+        :param serialization:
+        :param pool:
+        """
         self.pool = pool
         self.ack = ack
         self.connection = BlockingConnection() if not self.pool else None
@@ -69,12 +87,15 @@ class BlockingProducer(BaseProducer):
         super(BlockingProducer, self).__init__(serialization=serialization)
 
     def send_message(self, message):
+        """
+        :param message:
+        :return:
+        """
         self.body = self._serialize(message)
         if self.channel and not self.channel.is_open:
             raise pika.exceptions.ChannelClosed('Cannot send on a closed channel')
 
         with self.pool.acquire() as connection:
-
             connection.channel().basic_publish(
                 exchange=self.exchange,
                 routing_key=self.routing_key,
@@ -82,6 +103,7 @@ class BlockingProducer(BaseProducer):
             )
 
     def __del__(self):
+        #TODO exchange unbind
         if not self.pool:
             if self.channel.is_open:
                 self.channel.close()
@@ -92,6 +114,14 @@ class BlockingProducer(BaseProducer):
 class BlockingConsumer(BaseConsumer):
 
     def __init__(self, task_id, ack=True, exchange=None, serialization='dill', connection_params={}, pool=None):
+        """
+        :param task_id:
+        :param ack:
+        :param exchange:
+        :param serialization:
+        :param connection_params:
+        :param pool:
+        """
         self.pool = pool
         self.ack = ack
         self.exchange = exchange or 'amqp-store'
@@ -102,13 +132,15 @@ class BlockingConsumer(BaseConsumer):
         super(BlockingConsumer, self).__init__(serialization=serialization)
 
     def _init(self):
+        """
+        :return:
+        """
         self.connection = BlockingConnection(**self.connection_params)
         self.channel = self.connection.channel()
         self.channel.exchange_declare(
             exchange=self.exchange,
             exchange_type='direct'
         )
-
         self.channel.queue_declare(
             self.queue_id,
             auto_delete=False
@@ -119,6 +151,9 @@ class BlockingConsumer(BaseConsumer):
         )
 
     def _cleanup(self):
+        """
+        :return:
+        """
         if self.channel.is_open:
             self.channel.queue_unbind(self.queue_id,
                                       exchange=self.exchange,
@@ -130,10 +165,12 @@ class BlockingConsumer(BaseConsumer):
             self.connection.close()
 
     def get(self):
+        """
+        :return:
+        """
         body = None
         try:
             for method_frame, props, body in self.channel.consume(self.queue_id):
-
                 body = self._deserialize(body)
                 if self.ack:
                     self.channel.basic_ack(delivery_tag=method_frame.delivery_tag)

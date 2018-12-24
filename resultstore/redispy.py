@@ -17,6 +17,13 @@ def _task_id(task_id):
 class RedisProducer(BaseProducer):
 
     def __init__(self, task_id, expiry=None, host=_DEFAULT_HOST, port=_DEFAULT_PORT, serialization='dill'):
+        """
+        :param task_id:
+        :param expiry:
+        :param host:
+        :param port:
+        :param serialization:
+        """
         self.host = host
         self.port = port
         self.client = StrictRedis(host=self.host, port=self.port)
@@ -36,6 +43,12 @@ class RedisProducer(BaseProducer):
 class RedisConsumer(BaseConsumer):
 
     def __init__(self, task_id, host=_DEFAULT_HOST, port=_DEFAULT_PORT, serialization='dill'):
+        """
+        :param task_id:
+        :param host:
+        :param port:
+        :param serialization:
+        """
         self.host = host
         self.port = port
         self.client = StrictRedis(host=self.host, port=self.port)
