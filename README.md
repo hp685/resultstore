@@ -2,10 +2,16 @@
 An AMQP and Redis, producer-consumer result store that facilitates IPC between client and celery worker process.
 Altenatively, it may also be used instead of a result backend to communicate results back to the client.
 Can be used a stand alone result store for producer-consumer style applications.
+Consumer is blocking, while producer is fire-and-forget. The producer may wait for an ack in the case of amqp.  
+
+Installation:
+```python
+pip install resultstore
+```
 
 Usage: 
 
-AMQP producer-consumer
+**AMQP** producer-consumer
 
 Client code (consumer) that calls a celery task in an async manner.
 Blocking consumer that blocks for message from celery worker process.
@@ -42,7 +48,7 @@ Task code (producer)
 Note: Depending on the direction of message passing, producer-consumer may be reversed.
 In other words, task may be a consumer while client code can be a producer. 
 
-Redis producer-consumer
+**Redis** producer-consumer
 ```python
     from redispy import RedisConsumer
     task_id = uid()
