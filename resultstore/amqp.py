@@ -91,17 +91,24 @@ class BlockingProducer(BaseProducer):
 
 class BlockingConsumer(BaseConsumer):
 
-    def __init__(self, task_id, ack=True, exchange=None, serialization='dill', connection_params={}):
+    def __init__(self, task_id, ack=True, exchange=None, serialization='dill', connection_params={}, pool=None):
+        self.pool = pool
         self.ack = ack
         self.exchange = exchange or 'amqp-store'
         self.connection_params = connection_params
+        self.queue_id = task_id
+        if not self.pool:
+            self._init()
+        super(BlockingConsumer, self).__init__(serialization=serialization)
+
+    def _init(self):
         self.connection = BlockingConnection(**self.connection_params)
         self.channel = self.connection.channel()
         self.channel.exchange_declare(
             exchange=self.exchange,
             exchange_type='direct'
         )
-        self.queue_id = task_id
+
         self.channel.queue_declare(
             self.queue_id,
             auto_delete=False
@@ -110,7 +117,6 @@ class BlockingConsumer(BaseConsumer):
             exchange=self.exchange,
             queue=self.queue_id
         )
-        super(BlockingConsumer, self).__init__(serialization=serialization)
 
     def _cleanup(self):
         if self.channel.is_open:
@@ -134,7 +140,8 @@ class BlockingConsumer(BaseConsumer):
                 break
 
         finally:
-            self._cleanup()
+            if not self.pool:
+                self._cleanup()
             return body
 
     def __del__(self):
