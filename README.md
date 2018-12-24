@@ -30,6 +30,7 @@ Task code (producer)
     @app.task
     def hello_world(*args, **kwargs):
     task_id = kwargs.get('task_id')
+    # communicates with consumer that is defined by matching task-id
     producer = BlockingProducer(task_id=task_id)
     # continue with task computation
     #...
