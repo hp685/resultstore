@@ -6,7 +6,7 @@ import uuid
 
 from pika import BlockingConnection
 
-from base import BaseConsumer, BaseProducer
+from resultstore.base import BaseConsumer, BaseProducer
 from collections import deque
 from contextlib import contextmanager
 from time import sleep
@@ -94,9 +94,15 @@ class BlockingProducer(BaseProducer):
         self.body = self._serialize(message)
         if self.channel and not self.channel.is_open:
             raise pika.exceptions.ChannelClosed('Cannot send on a closed channel')
-
-        with self.pool.acquire() as connection:
-            connection.channel().basic_publish(
+        if self.pool:
+            with self.pool.acquire() as connection:
+                connection.channel().basic_publish(
+                    exchange=self.exchange,
+                    routing_key=self.routing_key,
+                    body=self.body
+                )
+        else:
+            self.channel.basic_publish(
                 exchange=self.exchange,
                 routing_key=self.routing_key,
                 body=self.body
