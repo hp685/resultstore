@@ -1,4 +1,6 @@
 
+Python 2 & 3 compatible. 
+
 An AMQP and Redis, producer-consumer result store that facilitates IPC between client and celery worker process.
 Altenatively, it may also be used instead of a result backend to communicate results back to the client.
 Can be used a stand alone result store for producer-consumer style applications.
