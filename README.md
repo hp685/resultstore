@@ -9,7 +9,8 @@ Installation:
 pip install resultstore
 ```
 
-Usage: 
+
+[Usage with Celery]
 
 **AMQP** producer-consumer
 
