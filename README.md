@@ -1,4 +1,6 @@
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Python 2 & 3 compatible. 
 
 An AMQP and Redis, producer-consumer result store that facilitates IPC between client and celery worker process.
@@ -10,6 +12,27 @@ Installation:
 ```python
 pip install resultstore
 ```
+
+
+
+[Stand alone usage]
+
+```python
+>>> from resultstore.amqp import BlockingProducer, BlockingConsumer, uid
+>>> correlation_id = uid()
+>>> p = BlockingProducer(task_id=correlation_id)
+>>> c = BlockingConsumer(task_id=correlation_id)
+>>> p.send_message('hello world!')
+>>> print(c.get())
+hello world!
+>>> 
+
+```
+
+Producer and consumer above can be in different processes as long as they can 
+communicate or agree upon a common task-id.
+
+
 
 
 [Usage with Celery]
@@ -77,20 +100,3 @@ In other words, task may be a consumer while client code can be a producer.
     producer.send_message('hello world!')    
     
 ```
-
-[Stand alone usage]
-
-```python
->>> from resultstore.amqp import BlockingProducer, BlockingConsumer, uid
->>> correlation_id = uid()
->>> p = BlockingProducer(task_id=correlation_id)
->>> c = BlockingConsumer(task_id=correlation_id)
->>> p.send_message('hello world!')
->>> print(c.get())
-hello world!
->>> 
-
-```
-
-Producer and consumer above can be in different processes as long as they can 
-communicate or agree upon a common task-id.
