@@ -51,7 +51,7 @@ In other words, task may be a consumer while client code can be a producer.
 
 **Redis** producer-consumer
 ```python
-    from redispy import RedisConsumer
+    from pyredis import RedisConsumer
     task_id = uid()
     consumer = RedisConsumer(task_id, poll_interval=0.5)
     # pass task_id along to celery task
@@ -61,7 +61,7 @@ In other words, task may be a consumer while client code can be a producer.
 ```
 
 ```python
-      from redispy import RedisProducer
+      from pyredis import RedisProducer
 
     # app is a celery.Celery() instance
 

@@ -1,7 +1,7 @@
 """Tests blocking producer-client."""
 
 from resultstore.amqp import BlockingProducer, BlockingConsumer, uid, PublisherPool
-from resultstore.redispy import RedisConsumer, RedisProducer
+from resultstore.pyredis import RedisConsumer, RedisProducer
 
 import pytest
 import threading
