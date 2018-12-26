@@ -13,6 +13,10 @@ Installation:
 pip install resultstore
 ```
 
+Or, to install from source:
+```python
+python setup.py install
+```
 
 
 [Stand alone usage]
@@ -71,8 +75,7 @@ Task code (producer)
     
 ```
 
-Note: Depending on the direction of message passing, producer-consumer may be reversed.
-In other words, task may be a consumer while client code can be a producer. 
+Note: Producer-Consumer pair may be reversed. In other words, task may be a consumer while client code can be a producer. 
 
 **Redis** producer-consumer
 ```python
