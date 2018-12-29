@@ -61,8 +61,9 @@ class PublisherPool(object):
 
     def __del__(self):
         for publisher in self.publishers:
-            if publisher.channel().is_open:
-                publisher.channel().close()
+            channel = publisher.channel()
+            if channel.is_open:
+                channel.close()
 
 
 class BlockingProducer(BaseProducer):
@@ -195,3 +196,5 @@ class BlockingConsumer(BaseConsumer):
 
         if self.connection.is_open:
             self.connection.close()
+
+
